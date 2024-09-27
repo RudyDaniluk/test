@@ -1,15 +1,14 @@
-public class MyCustomView extends View {
+public class MyCustomRectangleView extends View {
     private Paint paint;
-    private float radius;
-    private float cx, cy;
+    private float left, top, right, bottom;
     private int color;
 
-    public MyCustomView(Context context) {
+    public MyCustomRectangleView(Context context) {
         super(context);
         init();
     }
 
-    public MyCustomView(Context context, AttributeSet attrs) {
+    public MyCustomRectangleView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
@@ -17,9 +16,10 @@ public class MyCustomView extends View {
     private void init() {
         paint = new Paint();
         paint.setAntiAlias(true);
-        radius = 50;
-        cx = 100;
-        cy = 100;
+        left = 100;
+        top = 100;
+        right = 300;
+        bottom = 200;
         color = Color.RED;
         paint.setColor(color);
         startAnimations();
@@ -28,26 +28,33 @@ public class MyCustomView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        canvas.drawCircle(cx, cy, radius, paint);
+        canvas.drawRect(left, top, right, bottom, paint);
     }
 
     private void startAnimations() {
-        // Animacja zmiany rozmiaru
-        ObjectAnimator radiusAnimator = ObjectAnimator.ofFloat(this, "radius", 50, 150);
-        radiusAnimator.setDuration(1000);
-        radiusAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        radiusAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        // Animacja zmiany szerokości prostokąta
+        ObjectAnimator rightAnimator = ObjectAnimator.ofFloat(this, "right", right, right + 200);
+        rightAnimator.setDuration(1000);
+        rightAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        rightAnimator.setRepeatMode(ValueAnimator.REVERSE);
 
-        // Animacja zmiany pozycji
-        ObjectAnimator cxAnimator = ObjectAnimator.ofFloat(this, "cx", 100, 500);
-        cxAnimator.setDuration(1000);
-        cxAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        cxAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        // Animacja zmiany wysokości prostokąta
+        ObjectAnimator bottomAnimator = ObjectAnimator.ofFloat(this, "bottom", bottom, bottom + 200);
+        bottomAnimator.setDuration(1000);
+        bottomAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        bottomAnimator.setRepeatMode(ValueAnimator.REVERSE);
 
-        ObjectAnimator cyAnimator = ObjectAnimator.ofFloat(this, "cy", 100, 500);
-        cyAnimator.setDuration(1000);
-        cyAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        cyAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        // Animacja zmiany pozycji poziomej (lewej krawędzi)
+        ObjectAnimator leftAnimator = ObjectAnimator.ofFloat(this, "left", left, left + 300);
+        leftAnimator.setDuration(1000);
+        leftAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        leftAnimator.setRepeatMode(ValueAnimator.REVERSE);
+
+        // Animacja zmiany pozycji pionowej (górnej krawędzi)
+        ObjectAnimator topAnimator = ObjectAnimator.ofFloat(this, "top", top, top + 300);
+        topAnimator.setDuration(1000);
+        topAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        topAnimator.setRepeatMode(ValueAnimator.REVERSE);
 
         // Animacja zmiany koloru
         ValueAnimator colorAnimator = ValueAnimator.ofArgb(Color.RED, Color.BLUE);
@@ -62,22 +69,27 @@ public class MyCustomView extends View {
 
         // Uruchomienie animacji
         AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(radiusAnimator, cxAnimator, cyAnimator, colorAnimator);
+        animatorSet.playTogether(rightAnimator, bottomAnimator, leftAnimator, topAnimator, colorAnimator);
         animatorSet.start();
     }
 
-    public void setRadius(float radius) {
-        this.radius = radius;
+    public void setLeft(float left) {
+        this.left = left;
         invalidate();
     }
 
-    public void setCx(float cx) {
-        this.cx = cx;
+    public void setTop(float top) {
+        this.top = top;
         invalidate();
     }
 
-    public void setCy(float cy) {
-        this.cy = cy;
+    public void setRight(float right) {
+        this.right = right;
+        invalidate();
+    }
+
+    public void setBottom(float bottom) {
+        this.bottom = bottom;
         invalidate();
     }
 
