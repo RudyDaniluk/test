@@ -1,141 +1,89 @@
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.view.SurfaceHolder;
-
-public class CubeRenderer extends Thread {
-
-    private SurfaceHolder surfaceHolder;
-    private boolean isRunning;
+public class MyCustomView extends View {
     private Paint paint;
-    private float angle;
+    private float radius;
+    private float cx, cy;
+    private int color;
 
-    public CubeRenderer(SurfaceHolder surfaceHolder) {
-        this.surfaceHolder = surfaceHolder;
-        isRunning = true;
+    public MyCustomView(Context context) {
+        super(context);
+        init();
+    }
+
+    public MyCustomView(Context context, AttributeSet attrs) {
+        super(context, attrs);
+        init();
+    }
+
+    private void init() {
         paint = new Paint();
-        angle = 0;
+        paint.setAntiAlias(true);
+        radius = 50;
+        cx = 100;
+        cy = 100;
+        color = Color.RED;
+        paint.setColor(color);
+        startAnimations();
     }
 
     @Override
-    public void run() {
-        while (isRunning) {
-            Canvas canvas = null;
-            try {
-                canvas = surfaceHolder.lockCanvas(null);
-                synchronized (surfaceHolder) {
-                    if (canvas != null) {
-                        drawCube(canvas);
-                    }
-                }
-            } finally {
-                if (canvas != null) {
-                    surfaceHolder.unlockCanvasAndPost(canvas);
-                }
-            }
-            angle += 1; // Zwiększ kąt rotacji
-            try {
-                Thread.sleep(10); // Poczekaj trochę, aby animacja nie była zbyt szybka
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+    protected void onDraw(Canvas canvas) {
+        super.onDraw(canvas);
+        canvas.drawCircle(cx, cy, radius, paint);
     }
 
-    private void drawCube(Canvas canvas) {
-        canvas.drawColor(Color.WHITE);
-        int centerX = canvas.getWidth() / 2;
-        int centerY = canvas.getHeight() / 2;
-        int size = 200;
+    private void startAnimations() {
+        // Animacja zmiany rozmiaru
+        ObjectAnimator radiusAnimator = ObjectAnimator.ofFloat(this, "radius", 50, 150);
+        radiusAnimator.setDuration(1000);
+        radiusAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        radiusAnimator.setRepeatMode(ValueAnimator.REVERSE);
 
-        // Rysuj sześcian
-        paint.setColor(Color.BLUE);
-        drawLine(canvas, centerX - size, centerY - size, centerX + size, centerY - size);
-        drawLine(canvas, centerX + size, centerY - size, centerX + size, centerY + size);
-        drawLine(canvas, centerX + size, centerY + size, centerX - size, centerY + size);
-        drawLine(canvas, centerX - size, centerY + size, centerX - size, centerY - size);
+        // Animacja zmiany pozycji
+        ObjectAnimator cxAnimator = ObjectAnimator.ofFloat(this, "cx", 100, 500);
+        cxAnimator.setDuration(1000);
+        cxAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        cxAnimator.setRepeatMode(ValueAnimator.REVERSE);
 
-        paint.setColor(Color.RED);
-        drawLine(canvas, centerX - size, centerY - size, centerX, centerY - 2 * size);
-        drawLine(canvas, centerX + size, centerY - size, centerX, centerY - 2 * size);
-        drawLine(canvas, centerX + size, centerY + size, centerX, centerY - 2 * size);
-        drawLine(canvas, centerX - size, centerY + size, centerX, centerY - 2 * size);
+        ObjectAnimator cyAnimator = ObjectAnimator.ofFloat(this, "cy", 100, 500);
+        cyAnimator.setDuration(1000);
+        cyAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        cyAnimator.setRepeatMode(ValueAnimator.REVERSE);
 
-        paint.setColor(Color.GREEN);
-        drawLine(canvas, centerX - size, centerY - size, centerX - 2 * size, centerY);
-        drawLine(canvas, centerX - size, centerY + size, centerX - 2 * size, centerY);
-        drawLine(canvas, centerX + size, centerY + size, centerX + 2 * size, centerY);
-        drawLine(canvas, centerX + size, centerY - size, centerX + 2 * size, centerY);
+        // Animacja zmiany koloru
+        ValueAnimator colorAnimator = ValueAnimator.ofArgb(Color.RED, Color.BLUE);
+        colorAnimator.setDuration(1000);
+        colorAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        colorAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        colorAnimator.addUpdateListener(animator -> {
+            color = (int) animator.getAnimatedValue();
+            paint.setColor(color);
+            invalidate();
+        });
+
+        // Uruchomienie animacji
+        AnimatorSet animatorSet = new AnimatorSet();
+        animatorSet.playTogether(radiusAnimator, cxAnimator, cyAnimator, colorAnimator);
+        animatorSet.start();
     }
 
-    private void drawLine(Canvas canvas, float startX, float startY, float endX, float endY) {
-        canvas.drawLine(startX, startY, endX, endY, paint);
+    public void setRadius(float radius) {
+        this.radius = radius;
+        invalidate();
     }
 
-    public void stopRendering() {
-        isRunning = false;
+    public void setCx(float cx) {
+        this.cx = cx;
+        invalidate();
+    }
+
+    public void setCy(float cy) {
+        this.cy = cy;
+        invalidate();
+    }
+
+    public void setColor(int color) {
+        this.color = color;
+        paint.setColor(color);
+        invalidate();
     }
 }
-
-
-
-
-
-
-
-.
-.
-.
-import android.os.Bundle;
-import android.support.v7.app.AppCompatActivity;
-import android.view.SurfaceHolder;
-import android.view.SurfaceView;
-
-public class MainActivity extends AppCompatActivity {
-
-    private SurfaceView surfaceView;
-    private CubeRenderer renderer;
-
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
-
-        surfaceView = findViewById(R.id.surfaceView);
-        SurfaceHolder holder = surfaceView.getHolder();
-        renderer = new CubeRenderer(holder);
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        renderer.start();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        renderer.stopRendering();
-    }
-}
-
-
-
-
-
-
-
-XML
-<?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".MainActivity">
-
-    <SurfaceView
-        android:id="@+id/surfaceView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-</RelativeLayout>
