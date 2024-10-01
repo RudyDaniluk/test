@@ -1,14 +1,28 @@
-public class MyCustomRectangleView extends View {
+package com.example.customviewapp;
+
+import android.animation.ObjectAnimator;
+import android.content.Context;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.util.AttributeSet;
+import android.view.MotionEvent;
+import android.view.View;
+
+public class CustomCircleView extends View {
     private Paint paint;
-    private float left, top, right, bottom;
+    private float radius;
+    private float cx, cy;
     private int color;
 
-    public MyCustomRectangleView(Context context) {
+    private boolean isDragging = false; // Flaga wskazująca, czy przeciąganie jest aktywne
+
+    public CustomCircleView(Context context) {
         super(context);
         init();
     }
 
-    public MyCustomRectangleView(Context context, AttributeSet attrs) {
+    public CustomCircleView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
@@ -16,80 +30,32 @@ public class MyCustomRectangleView extends View {
     private void init() {
         paint = new Paint();
         paint.setAntiAlias(true);
-        left = 100;
-        top = 100;
-        right = 300;
-        bottom = 200;
-        color = Color.RED;
+        radius = 100; // Domyślny promień
+        cx = 200;     // Domyślna pozycja X
+        cy = 200;     // Domyślna pozycja Y
+        color = Color.RED; // Domyślny kolor
         paint.setColor(color);
-        startAnimations();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        canvas.drawRect(left, top, right, bottom, paint);
+        canvas.drawCircle(cx, cy, radius, paint);
     }
 
-    private void startAnimations() {
-        // Animacja zmiany szerokości prostokąta
-        ObjectAnimator rightAnimator = ObjectAnimator.ofFloat(this, "right", right, right + 200);
-        rightAnimator.setDuration(1000);
-        rightAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        rightAnimator.setRepeatMode(ValueAnimator.REVERSE);
-
-        // Animacja zmiany wysokości prostokąta
-        ObjectAnimator bottomAnimator = ObjectAnimator.ofFloat(this, "bottom", bottom, bottom + 200);
-        bottomAnimator.setDuration(1000);
-        bottomAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        bottomAnimator.setRepeatMode(ValueAnimator.REVERSE);
-
-        // Animacja zmiany pozycji poziomej (lewej krawędzi)
-        ObjectAnimator leftAnimator = ObjectAnimator.ofFloat(this, "left", left, left + 300);
-        leftAnimator.setDuration(1000);
-        leftAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        leftAnimator.setRepeatMode(ValueAnimator.REVERSE);
-
-        // Animacja zmiany pozycji pionowej (górnej krawędzi)
-        ObjectAnimator topAnimator = ObjectAnimator.ofFloat(this, "top", top, top + 300);
-        topAnimator.setDuration(1000);
-        topAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        topAnimator.setRepeatMode(ValueAnimator.REVERSE);
-
-        // Animacja zmiany koloru
-        ValueAnimator colorAnimator = ValueAnimator.ofArgb(Color.RED, Color.BLUE);
-        colorAnimator.setDuration(1000);
-        colorAnimator.setRepeatCount(ValueAnimator.INFINITE);
-        colorAnimator.setRepeatMode(ValueAnimator.REVERSE);
-        colorAnimator.addUpdateListener(animator -> {
-            color = (int) animator.getAnimatedValue();
-            paint.setColor(color);
-            invalidate();
-        });
-
-        // Uruchomienie animacji
-        AnimatorSet animatorSet = new AnimatorSet();
-        animatorSet.playTogether(rightAnimator, bottomAnimator, leftAnimator, topAnimator, colorAnimator);
-        animatorSet.start();
+    // Metody do personalizacji widoku
+    public void setRadius(float radius) {
+        this.radius = radius;
+        invalidate(); // Przerysuj widok
     }
 
-    public void setLeft(float left) {
-        this.left = left;
+    public void setCx(float cx) {
+        this.cx = cx;
         invalidate();
     }
 
-    public void setTop(float top) {
-        this.top = top;
-        invalidate();
-    }
-
-    public void setRight(float right) {
-        this.right = right;
-        invalidate();
-    }
-
-    public void setBottom(float bottom) {
-        this.bottom = bottom;
+    public void setCy(float cy) {
+        this.cy = cy;
         invalidate();
     }
 
@@ -97,5 +63,50 @@ public class MyCustomRectangleView extends View {
         this.color = color;
         paint.setColor(color);
         invalidate();
+    }
+
+    // Metoda do uruchamiania animacji zmieniającej rozmiar po upuszczeniu
+    private void startSizeAnimation() {
+        ObjectAnimator radiusAnimator = ObjectAnimator.ofFloat(this, "radius", radius, radius + 50);
+        radiusAnimator.setDuration(1000);
+        radiusAnimator.setRepeatCount(ObjectAnimator.INFINITE);
+        radiusAnimator.setRepeatMode(ObjectAnimator.REVERSE);
+        radiusAnimator.start();
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                // Sprawdź, czy dotyk jest w obrębie okręgu
+                float dx = event.getX() - cx;
+                float dy = event.getY() - cy;
+                if (Math.sqrt(dx * dx + dy * dy) <= radius) {
+                    isDragging = true;
+                    setColor(Color.BLUE); // Zmień kolor przy rozpoczęciu przeciągania
+                    return true;
+                }
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                if (isDragging) {
+                    // Aktualizuj pozycję okręgu w czasie przeciągania
+                    cx = event.getX();
+                    cy = event.getY();
+                    invalidate(); // Przerysuj widok
+                    return true;
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+                if (isDragging) {
+                    isDragging = false; // Zakończ przeciąganie
+                    setColor(Color.GREEN); // Zmień kolor po upuszczeniu
+                    startSizeAnimation();  // Rozpocznij animację zmiany rozmiaru
+                    return true;
+                }
+                break;
+        }
+        return super.onTouchEvent(event);
     }
 }
