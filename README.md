@@ -1,112 +1,124 @@
-package com.example.customviewapp;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
-import android.animation.ObjectAnimator;
-import android.content.Context;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.util.AttributeSet;
-import android.view.MotionEvent;
-import android.view.View;
+// Klasa Person - obiekt, którego stan będziemy zapisywać i przywracać.
+class Person {
+    private String imie;
+    private String nazwisko;
+    private Date dataUrodzenia;
+    private String email;
+    private long telefon;
 
-public class CustomCircleView extends View {
-    private Paint paint;
-    private float radius;
-    private float cx, cy;
-    private int color;
-
-    private boolean isDragging = false; // Flaga wskazująca, czy przeciąganie jest aktywne
-
-    public CustomCircleView(Context context) {
-        super(context);
-        init();
+    public Person(String imie, String nazwisko, Date dataUrodzenia, String email, long telefon) {
+        this.imie = imie;
+        this.nazwisko = nazwisko;
+        this.dataUrodzenia = dataUrodzenia;
+        this.email = email;
+        this.telefon = telefon;
     }
 
-    public CustomCircleView(Context context, AttributeSet attrs) {
-        super(context, attrs);
-        init();
+    // Metoda tworzy obiekt Memento zawierający aktualny stan Person
+    public Memento saveToMemento() {
+        return new Memento(imie, nazwisko, dataUrodzenia, email, telefon);
     }
 
-    private void init() {
-        paint = new Paint();
-        paint.setAntiAlias(true);
-        radius = 100; // Domyślny promień
-        cx = 200;     // Domyślna pozycja X
-        cy = 200;     // Domyślna pozycja Y
-        color = Color.RED; // Domyślny kolor
-        paint.setColor(color);
+    // Metoda przywraca stan na podstawie przekazanego Memento
+    public void restoreFromMemento(Memento memento) {
+        this.imie = memento.getImie();
+        this.nazwisko = memento.getNazwisko();
+        this.dataUrodzenia = memento.getDataUrodzenia();
+        this.email = memento.getEmail();
+        this.telefon = memento.getTelefon();
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        canvas.drawCircle(cx, cy, radius, paint);
+    public String toString() {
+        return "Person{" +
+                "imie='" + imie + '\'' +
+                ", nazwisko='" + nazwisko + '\'' +
+                ", dataUrodzenia=" + dataUrodzenia +
+                ", email='" + email + '\'' +
+                ", telefon=" + telefon +
+                '}';
     }
 
-    // Metody do personalizacji widoku
-    public void setRadius(float radius) {
-        this.radius = radius;
-        invalidate(); // Przerysuj widok
-    }
+    // Klasa wewnętrzna Memento, która przechowuje stan obiektu Person
+    public static class Memento {
+        private final String imie;
+        private final String nazwisko;
+        private final Date dataUrodzenia;
+        private final String email;
+        private final long telefon;
 
-    public void setCx(float cx) {
-        this.cx = cx;
-        invalidate();
-    }
-
-    public void setCy(float cy) {
-        this.cy = cy;
-        invalidate();
-    }
-
-    public void setColor(int color) {
-        this.color = color;
-        paint.setColor(color);
-        invalidate();
-    }
-
-    // Metoda do uruchamiania animacji zmieniającej rozmiar po upuszczeniu
-    private void startSizeAnimation() {
-        ObjectAnimator radiusAnimator = ObjectAnimator.ofFloat(this, "radius", radius, radius + 50);
-        radiusAnimator.setDuration(1000);
-        radiusAnimator.setRepeatCount(ObjectAnimator.INFINITE);
-        radiusAnimator.setRepeatMode(ObjectAnimator.REVERSE);
-        radiusAnimator.start();
-    }
-
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                // Sprawdź, czy dotyk jest w obrębie okręgu
-                float dx = event.getX() - cx;
-                float dy = event.getY() - cy;
-                if (Math.sqrt(dx * dx + dy * dy) <= radius) {
-                    isDragging = true;
-                    setColor(Color.BLUE); // Zmień kolor przy rozpoczęciu przeciągania
-                    return true;
-                }
-                break;
-
-            case MotionEvent.ACTION_MOVE:
-                if (isDragging) {
-                    // Aktualizuj pozycję okręgu w czasie przeciągania
-                    cx = event.getX();
-                    cy = event.getY();
-                    invalidate(); // Przerysuj widok
-                    return true;
-                }
-                break;
-
-            case MotionEvent.ACTION_UP:
-                if (isDragging) {
-                    isDragging = false; // Zakończ przeciąganie
-                    setColor(Color.GREEN); // Zmień kolor po upuszczeniu
-                    startSizeAnimation();  // Rozpocznij animację zmiany rozmiaru
-                    return true;
-                }
-                break;
+        public Memento(String imie, String nazwisko, Date dataUrodzenia, String email, long telefon) {
+            this.imie = imie;
+            this.nazwisko = nazwisko;
+            this.dataUrodzenia = dataUrodzenia;
+            this.email = email;
+            this.telefon = telefon;
         }
-        return super.onTouchEvent(event);
+
+        // Gettery pozwalające na odczyt stanu
+        public String getImie() {
+            return imie;
+        }
+
+        public String getNazwisko() {
+            return nazwisko;
+        }
+
+        public Date getDataUrodzenia() {
+            return dataUrodzenia;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public long getTelefon() {
+            return telefon;
+        }
+    }
+}
+
+// Klasa PersonBackup - zarządza listą stanów (pamiątek)
+class PersonBackup {
+    private final List<Person.Memento> mementoList = new ArrayList<>();
+
+    // Dodanie nowego stanu do listy
+    public void addMemento(Person.Memento memento) {
+        mementoList.add(memento);
+    }
+
+    // Pobranie konkretnego stanu na podstawie indeksu
+    public Person.Memento getMemento(int index) {
+        if (index < 0 || index >= mementoList.size()) {
+            throw new IndexOutOfBoundsException("Invalid index for memento.");
+        }
+        return mementoList.get(index);
+    }
+}
+
+// Przykład działania
+public class Main {
+    public static void main(String[] args) {
+        // Tworzenie obiektu Person
+        Person person = new Person("Jan", "Kowalski", new Date(), "jan.kowalski@example.com", 123456789);
+
+        // Tworzenie obiektu PersonBackup
+        PersonBackup backup = new PersonBackup();
+
+        // Zapisanie początkowego stanu
+        backup.addMemento(person.saveToMemento());
+        System.out.println("Początkowy stan: " + person);
+
+        // Dokonanie zmian w obiekcie
+        person.restoreFromMemento(new Person.Memento("Adam", "Nowak", new Date(), "adam.nowak@example.com", 987654321));
+        System.out.println("Zmieniony stan: " + person);
+
+        // Przywrócenie wcześniejszego stanu
+        person.restoreFromMemento(backup.getMemento(0));
+        System.out.println("Przywrócony stan: " + person);
     }
 }
