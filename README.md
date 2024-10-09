@@ -1,124 +1,67 @@
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.security.SecureRandom;
 
-// Klasa Person - obiekt, którego stan będziemy zapisywać i przywracać.
-class Person {
-    private String imie;
-    private String nazwisko;
-    private Date dataUrodzenia;
-    private String email;
-    private long telefon;
+public class CodeGenerator {
+    private final String code;
 
-    public Person(String imie, String nazwisko, Date dataUrodzenia, String email, long telefon) {
-        this.imie = imie;
-        this.nazwisko = nazwisko;
-        this.dataUrodzenia = dataUrodzenia;
-        this.email = email;
-        this.telefon = telefon;
-    }
-
-    // Metoda tworzy obiekt Memento zawierający aktualny stan Person
-    public Memento saveToMemento() {
-        return new Memento(imie, nazwisko, dataUrodzenia, email, telefon);
-    }
-
-    // Metoda przywraca stan na podstawie przekazanego Memento
-    public void restoreFromMemento(Memento memento) {
-        this.imie = memento.getImie();
-        this.nazwisko = memento.getNazwisko();
-        this.dataUrodzenia = memento.getDataUrodzenia();
-        this.email = memento.getEmail();
-        this.telefon = memento.getTelefon();
-    }
-
-    @Override
-    public String toString() {
-        return "Person{" +
-                "imie='" + imie + '\'' +
-                ", nazwisko='" + nazwisko + '\'' +
-                ", dataUrodzenia=" + dataUrodzenia +
-                ", email='" + email + '\'' +
-                ", telefon=" + telefon +
-                '}';
-    }
-
-    // Klasa wewnętrzna Memento, która przechowuje stan obiektu Person
-    public static class Memento {
-        private final String imie;
-        private final String nazwisko;
-        private final Date dataUrodzenia;
-        private final String email;
-        private final long telefon;
-
-        public Memento(String imie, String nazwisko, Date dataUrodzenia, String email, long telefon) {
-            this.imie = imie;
-            this.nazwisko = nazwisko;
-            this.dataUrodzenia = dataUrodzenia;
-            this.email = email;
-            this.telefon = telefon;
-        }
-
-        // Gettery pozwalające na odczyt stanu
-        public String getImie() {
-            return imie;
-        }
-
-        public String getNazwisko() {
-            return nazwisko;
-        }
-
-        public Date getDataUrodzenia() {
-            return dataUrodzenia;
-        }
-
-        public String getEmail() {
-            return email;
-        }
-
-        public long getTelefon() {
-            return telefon;
+    // Konstruktor przyjmujący długość kodu
+    public CodeGenerator(int length) {
+        if (length == 4 || length == 6) {
+            this.code = generateNumericCode(length);
+        } else if (length == 12 || length == 16) {
+            this.code = generateAlphanumericCode(length);
+        } else {
+            throw new IllegalArgumentException("Nieprawidłowa długość kodu. Dozwolone wartości: 4, 6, 12, 16.");
         }
     }
-}
 
-// Klasa PersonBackup - zarządza listą stanów (pamiątek)
-class PersonBackup {
-    private final List<Person.Memento> mementoList = new ArrayList<>();
-
-    // Dodanie nowego stanu do listy
-    public void addMemento(Person.Memento memento) {
-        mementoList.add(memento);
-    }
-
-    // Pobranie konkretnego stanu na podstawie indeksu
-    public Person.Memento getMemento(int index) {
-        if (index < 0 || index >= mementoList.size()) {
-            throw new IndexOutOfBoundsException("Invalid index for memento.");
+    // Metoda generująca kod składający się z cyfr (0-9)
+    private String generateNumericCode(int length) {
+        SecureRandom random = new SecureRandom();
+        StringBuilder codeBuilder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            codeBuilder.append(random.nextInt(10)); // Generowanie liczby z zakresu 0-9
         }
-        return mementoList.get(index);
+        return codeBuilder.toString();
     }
-}
 
-// Przykład działania
-public class Main {
+    // Metoda generująca kod składający się z cyfr, małych i dużych liter (0-9, a-z, A-Z)
+    private String generateAlphanumericCode(int length) {
+        SecureRandom random = new SecureRandom();
+        String characters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        StringBuilder codeBuilder = new StringBuilder(length);
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(characters.length());
+            codeBuilder.append(characters.charAt(index));
+        }
+        return codeBuilder.toString();
+    }
+
+    // Metoda zwracająca wygenerowany kod
+    public String getCode() {
+        return this.code;
+    }
+
+    // Metoda zapisująca kod do pliku
+    public void saveToFile(String filePath) {
+        try (FileWriter writer = new FileWriter(filePath)) {
+            writer.write(this.code);
+            System.out.println("Kod został zapisany do pliku: " + filePath);
+        } catch (IOException e) {
+            System.err.println("Błąd zapisu do pliku: " + e.getMessage());
+        }
+    }
+
     public static void main(String[] args) {
-        // Tworzenie obiektu Person
-        Person person = new Person("Jan", "Kowalski", new Date(), "jan.kowalski@example.com", 123456789);
+        // Przykład użycia
+        CodeGenerator pin4 = new CodeGenerator(4);
+        System.out.println("Wygenerowany PIN (4-cyfrowy): " + pin4.getCode());
+        
+        CodeGenerator token12 = new CodeGenerator(12);
+        System.out.println("Wygenerowany Token (12-znakowy): " + token12.getCode());
 
-        // Tworzenie obiektu PersonBackup
-        PersonBackup backup = new PersonBackup();
-
-        // Zapisanie początkowego stanu
-        backup.addMemento(person.saveToMemento());
-        System.out.println("Początkowy stan: " + person);
-
-        // Dokonanie zmian w obiekcie
-        person.restoreFromMemento(new Person.Memento("Adam", "Nowak", new Date(), "adam.nowak@example.com", 987654321));
-        System.out.println("Zmieniony stan: " + person);
-
-        // Przywrócenie wcześniejszego stanu
-        person.restoreFromMemento(backup.getMemento(0));
-        System.out.println("Przywrócony stan: " + person);
+        // Zapis do pliku
+        token12.saveToFile("token.txt");
     }
 }
