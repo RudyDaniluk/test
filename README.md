@@ -1,106 +1,32 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<ui version="4.0">
- <class>MainWindow</class>
- <widget class="QMainWindow" name="MainWindow">
-  <property name="geometry">
-   <rect>
-    <x>0</x>
-    <y>0</y>
-    <width>600</width>
-    <height>400</height>
-   </rect>
-  </property>
-  <property name="windowTitle">
-   <string>Clip-Clap</string>
-  </property>
-  <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <layout class="QHBoxLayout" name="topButtonsLayout">
-      <item>
-       <widget class="QPushButton" name="browseButton">
-        <property name="text">
-         <string>Przeglądaj katalog</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="saveButton">
-        <property name="text">
-         <string>Zapisz TXT</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
-     <widget class="QListWidget" name="fileList">
-      <property name="selectionMode">
-       <enum>QAbstractItemView::SingleSelection</enum>
-      </property>
-     </widget>
-    </item>
-    <item>
-     <layout class="QHBoxLayout" name="bottomButtonsLayout">
-      <item>
-       <widget class="QPushButton" name="useButton">
-        <property name="text">
-         <string>Użyj/Kopiuj</string>
-        </property>
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="openFolderButton">
-        <property name="text">
-         <string>Otwórz katalog</string>
-        </property>
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QPushButton" name="deleteButton">
-        <property name="text">
-         <string>Usuń z listy</string>
-        </property>
-        <property name="enabled">
-         <bool>false</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
-    </item>
-   </layout>
-  </widget>
-  <action name="actionQuit">
-   <property name="text">
-    <string>Quit</string>
-   </property>
-  </action>
- </widget>
- <resources/>
- <connections/>
-</ui>
 import sys
 import os
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidgetItem, QMessageBox
 from PyQt5.QtGui import QIcon
+from PyQt5 import uic
 from PyQt5.QtCore import Qt
 from pathlib import Path
 import shutil
 
-# Zakładamy, że plik interfejsu wygenerowany przez pyuic5 nazywa się 'ui_clipclap.py'
-from ui_clipclap import Ui_MainWindow  # Import interfejsu z Qt Designer
-
-class ClipClapApp(QMainWindow, Ui_MainWindow):
+class ClipClapApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setupUi(self)
-        
+
+        # Ładowanie pliku UI bezpośrednio
+        uic.loadUi('untitled.ui', self)
+
+        # Łączenie elementów interfejsu z kodem
+        self.browseButton = self.findChild(QPushButton, 'browseButton')
+        self.saveButton = self.findChild(QPushButton, 'saveButton')
+        self.fileList = self.findChild(QListWidget, 'fileList')
+        self.useButton = self.findChild(QPushButton, 'useButton')
+        self.openFolderButton = self.findChild(QPushButton, 'openFolderButton')
+        self.deleteButton = self.findChild(QPushButton, 'deleteButton')
+
+        # Wstępne ustawienia dla przeciągnij-upuść
+        self.fileList.setAcceptDrops(True)
+        self.fileList.dragEnterEvent = self.dragEnterEvent
+        self.fileList.dropEvent = self.dropEvent
+
         # Podpięcie przycisków do funkcji
         self.browseButton.clicked.connect(self.browse_folder)
         self.saveButton.clicked.connect(self.save_txt)
@@ -110,9 +36,31 @@ class ClipClapApp(QMainWindow, Ui_MainWindow):
 
         # Wstępne ustawienie przycisków manipulacyjnych jako nieaktywne
         self.fileList.itemSelectionChanged.connect(self.update_buttons)
+        self.useButton.setEnabled(False)
+        self.openFolderButton.setEnabled(False)
+        self.deleteButton.setEnabled(False)
 
         # Przechowywanie pełnych ścieżek do plików
         self.file_paths = []
+
+    # Funkcja przeciągnij i upuść - przeciąganie plików
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasUrls():
+            event.accept()
+        else:
+            event.ignore()
+
+    # Funkcja przeciągnij i upuść - upuszczanie plików
+    def dropEvent(self, event):
+        urls = event.mimeData().urls()
+        for url in urls:
+            file_path = url.toLocalFile()
+            file = Path(file_path)
+            if file.is_file():
+                item = QListWidgetItem(file.name)
+                item.setIcon(QIcon("icon.png"))  # Możesz dodać własną ikonę
+                self.fileList.addItem(item)
+                self.file_paths.append(file)
 
     def browse_folder(self):
         # Otwiera okno dialogowe, aby wybrać katalog
@@ -128,17 +76,19 @@ class ClipClapApp(QMainWindow, Ui_MainWindow):
                     self.file_paths.append(file)
 
     def save_txt(self):
-        # Zapisuje listę plików do pliku TXT
+        # Zapisuje listę plików do pliku TXT w wybranym katalogu
         if not self.file_paths:
             QMessageBox.warning(self, "Brak plików", "Brak plików do zapisania!")
             return
 
-        save_path, _ = QFileDialog.getSaveFileName(self, "Zapisz plik TXT", "", "Pliki TXT (*.txt)")
-        if save_path:
+        # Wybór katalogu, w którym zapisany zostanie plik TXT
+        save_dir = QFileDialog.getExistingDirectory(self, "Wybierz katalog do zapisania pliku TXT")
+        if save_dir:
+            save_path = Path(save_dir) / "file_list.txt"
             with open(save_path, 'w') as file:
                 for file_path in self.file_paths:
                     file.write(str(file_path) + '\n')
-            QMessageBox.information(self, "Zapisano", "Lista plików została zapisana.")
+            QMessageBox.information(self, "Zapisano", f"Lista plików została zapisana w {save_path}")
 
     def update_buttons(self):
         # Aktywacja/dezaktywacja przycisków na podstawie zaznaczenia
