@@ -1,139 +1,127 @@
-import sys
-import os
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QListWidgetItem, QMessageBox
-from PyQt5.QtGui import QIcon
-from PyQt5 import uic
-from PyQt5.QtCore import Qt
-from pathlib import Path
-import shutil
+import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
+import android.widget.ImageView;
+import android.widget.TextView;
+import android.widget.Toast;
+import androidx.appcompat.app.AppCompatActivity;
+import com.squareup.picasso.Picasso;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
-class ClipClapApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
+public class MainActivity extends AppCompatActivity {
 
-        # Ładowanie pliku UI bezpośrednio
-        uic.loadUi('untitled.ui', self)
+    private static final String BASE_URL = "https://api.nasa.gov/";
+    private static final String API_KEY = "SRhamzXLkiTKKksVjWg3TU12VVl1Oeq8xnsitk2o";
+    private TextView titleTextView;
+    private TextView descriptionTextView;
+    private ImageView imageView;
+    private Button loadButton;
+    
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
 
-        # Łączenie elementów interfejsu z kodem
-        self.browseButton = self.findChild(QPushButton, 'browseButton')
-        self.saveButton = self.findChild(QPushButton, 'saveButton')
-        self.fileList = self.findChild(QListWidget, 'fileList')
-        self.useButton = self.findChild(QPushButton, 'useButton')
-        self.openFolderButton = self.findChild(QPushButton, 'openFolderButton')
-        self.deleteButton = self.findChild(QPushButton, 'deleteButton')
+        titleTextView = findViewById(R.id.titleTextView);
+        descriptionTextView = findViewById(R.id.descriptionTextView);
+        imageView = findViewById(R.id.imageView);
+        loadButton = findViewById(R.id.loadButton);
 
-        # Wstępne ustawienia dla przeciągnij-upuść
-        self.fileList.setAcceptDrops(True)
-        self.fileList.dragEnterEvent = self.dragEnterEvent
-        self.fileList.dropEvent = self.dropEvent
+        loadButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                fetchPhotoOfTheDay();
+            }
+        });
+    }
 
-        # Podpięcie przycisków do funkcji
-        self.browseButton.clicked.connect(self.browse_folder)
-        self.saveButton.clicked.connect(self.save_txt)
-        self.useButton.clicked.connect(self.copy_file)
-        self.openFolderButton.clicked.connect(self.open_folder)
-        self.deleteButton.clicked.connect(self.remove_file)
+    private void fetchPhotoOfTheDay() {
+        Retrofit retrofit = new Retrofit.Builder()
+                .baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
 
-        # Wstępne ustawienie przycisków manipulacyjnych jako nieaktywne
-        self.fileList.itemSelectionChanged.connect(self.update_buttons)
-        self.useButton.setEnabled(False)
-        self.openFolderButton.setEnabled(False)
-        self.deleteButton.setEnabled(False)
+        ApiService apiService = retrofit.create(ApiService.class);
+        Call<NasaPhoto> call = apiService.getPhotoOfTheDay(API_KEY, "2024-11-08"); // Możesz dynamicznie podać datę
 
-        # Przechowywanie pełnych ścieżek do plików
-        self.file_paths = []
+        call.enqueue(new Callback<NasaPhoto>() {
+            @Override
+            public void onResponse(Call<NasaPhoto> call, Response<NasaPhoto> response) {
+                if (response.isSuccessful() && response.body() != null) {
+                    NasaPhoto photo = response.body();
+                    titleTextView.setText(photo.getTitle());
+                    descriptionTextView.setText(photo.getExplanation());
+                    Picasso.get().load(photo.getUrl()).into(imageView);
+                } else {
+                    Toast.makeText(MainActivity.this, "Błąd w pobieraniu danych", Toast.LENGTH_SHORT).show();
+                }
+            }
 
-    # Funkcja przeciągnij i upuść - przeciąganie plików
-    def dragEnterEvent(self, event):
-        if event.mimeData().hasUrls():
-            event.accept()
-        else:
-            event.ignore()
+            @Override
+            public void onFailure(Call<NasaPhoto> call, Throwable t) {
+                Toast.makeText(MainActivity.this, "Błąd: " + t.getMessage(), Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+}
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp"
+    tools:context=".MainActivity">
 
-    # Funkcja przeciągnij i upuść - upuszczanie plików
-    def dropEvent(self, event):
-        urls = event.mimeData().urls()
-        for url in urls:
-            file_path = url.toLocalFile()
-            file = Path(file_path)
-            if file.is_file():
-                item = QListWidgetItem(file.name)
-                item.setIcon(QIcon("icon.png"))  # Możesz dodać własną ikonę
-                self.fileList.addItem(item)
-                self.file_paths.append(file)
+    <!-- Tytuł zdjęcia -->
+    <TextView
+        android:id="@+id/titleTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Tytuł zdjęcia"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
 
-    def browse_folder(self):
-        # Otwiera okno dialogowe, aby wybrać katalog
-        folder_path = QFileDialog.getExistingDirectory(self, "Wybierz katalog")
-        if folder_path:
-            folder = Path(folder_path)
-            # Dodajemy wszystkie pliki z katalogu do listy
-            for file in folder.iterdir():
-                if file.is_file():
-                    item = QListWidgetItem(file.name)
-                    item.setIcon(QIcon("icon.png"))  # Możesz dostosować ikonę
-                    self.fileList.addItem(item)
-                    self.file_paths.append(file)
+    <!-- Obraz zdjęcia dnia -->
+    <ImageView
+        android:id="@+id/imageView"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:scaleType="centerCrop"
+        android:contentDescription="@string/photo_of_the_day"
+        android:layout_marginBottom="8dp" />
 
-    def save_txt(self):
-        # Zapisuje listę plików do pliku TXT w wybranym katalogu
-        if not self.file_paths:
-            QMessageBox.warning(self, "Brak plików", "Brak plików do zapisania!")
-            return
+    <!-- Opis zdjęcia -->
+    <TextView
+        android:id="@+id/descriptionTextView"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Opis zdjęcia"
+        android:textSize="16sp"
+        android:paddingBottom="8dp" />
 
-        # Wybór katalogu, w którym zapisany zostanie plik TXT
-        save_dir = QFileDialog.getExistingDirectory(self, "Wybierz katalog do zapisania pliku TXT")
-        if save_dir:
-            save_path = Path(save_dir) / "file_list.txt"
-            with open(save_path, 'w') as file:
-                for file_path in self.file_paths:
-                    file.write(str(file_path) + '\n')
-            QMessageBox.information(self, "Zapisano", f"Lista plików została zapisana w {save_path}")
+    <!-- Przycisk do pobrania zdjęcia -->
+    <Button
+        android:id="@+id/loadButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Pobierz zdjęcie dnia" />
 
-    def update_buttons(self):
-        # Aktywacja/dezaktywacja przycisków na podstawie zaznaczenia
-        selected_items = self.fileList.selectedItems()
-        if selected_items:
-            self.useButton.setEnabled(True)
-            self.openFolderButton.setEnabled(True)
-            self.deleteButton.setEnabled(True)
-        else:
-            self.useButton.setEnabled(False)
-            self.openFolderButton.setEnabled(False)
-            self.deleteButton.setEnabled(False)
-
-    def copy_file(self):
-        # Kopiuje zaznaczony plik do schowka
-        selected_items = self.fileList.selectedItems()
-        if selected_items:
-            selected_index = self.fileList.row(selected_items[0])
-            selected_file = self.file_paths[selected_index]
-            clipboard = QApplication.clipboard()
-            clipboard.setText(str(selected_file))
-            QMessageBox.information(self, "Skopiowano", f"Skopiowano plik: {selected_file}")
-
-    def open_folder(self):
-        # Otwiera katalog, w którym znajduje się zaznaczony plik
-        selected_items = self.fileList.selectedItems()
-        if selected_items:
-            selected_index = self.fileList.row(selected_items[0])
-            selected_file = self.file_paths[selected_index]
-            folder_path = str(Path(selected_file).parent)
-            os.startfile(folder_path)
-
-    def remove_file(self):
-        # Usuwa zaznaczony plik z listy
-        selected_items = self.fileList.selectedItems()
-        if selected_items:
-            selected_index = self.fileList.row(selected_items[0])
-            self.fileList.takeItem(selected_index)
-            del self.file_paths[selected_index]
-
-def main():
-    app = QApplication(sys.argv)
-    window = ClipClapApp()
-    window.show()
-    sys.exit(app.exec_())
-
-if __name__ == "__main__":
-    main()
+</LinearLayout>
+loadButton.setOnClickListener(new View.OnClickListener() {
+    @Override
+    public void onClick(View v) {
+        Calendar calendar = Calendar.getInstance();
+        DatePickerDialog datePickerDialog = new DatePickerDialog(MainActivity.this,
+            (view, year, month, dayOfMonth) -> {
+                String selectedDate = year + "-" + (month + 1) + "-" + dayOfMonth;
+                fetchPhotoOfTheDay(selectedDate);
+            }, calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
+        datePickerDialog.show();
+    }
+});
